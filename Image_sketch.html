@@ -1,0 +1,277 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>PoseNet on Reference Image</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/p5.min.js" crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.dom.min.js" crossorigin=""></script>
+  <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js" type="text/javascript" crossorigin=""></script><style type="text/css" data-glamor=""></style>
+
+  <base href=""><script src="/previewScripts.js"></script><style data-emotion=""></style><script>
+  function getScriptOff(line) {
+    var offs = [[68,"sketch"]];
+    var l = 0;
+    var file = '';
+    for (var i=0; i<offs.length; i++) {
+      var n = offs[i][0];
+      if (n < line && n > l) {
+        l = n;
+        file = offs[i][1];
+      }
+    }
+    return [line - l, file];
+  }
+  // catch reference errors, via http://stackoverflow.com/a/12747364/2994108
+  window.onerror = function (msg, url, lineNumber, columnNo, error) {
+    var string = msg.toLowerCase();
+    var substring = "script error";
+    var data = {};
+    if (url.match(/^(http:\/\/|https:\/\/)/) !== null && error.stack){
+      var errorNum = error.stack.split('about:srcdoc:')[1].split(':')[0];
+      var fileInfo = getScriptOff(errorNum);
+      data = msg + ' (' + fileInfo[1] + ': line ' + fileInfo[0] + ')';
+    } else {
+      var fileInfo = getScriptOff(lineNumber);
+      data = msg + ' (' + fileInfo[1] + ': line ' + fileInfo[0] + ')';
+    }
+    window.parent.postMessage([{
+      log: [{
+        method: 'error',
+        data: [data],
+        id: Date.now().toString()
+      }],
+      source: fileInfo[1]
+    }], '*');
+    return false;
+  };
+  // catch rejected promises
+  window.onunhandledrejection = function (event) {
+    if (event.reason && event.reason.message && event.reason.stack){
+      var errorNum = event.reason.stack.split('about:srcdoc:')[1].split(':')[0];
+      var fileInfo = getScriptOff(errorNum);
+      var data = event.reason.message + ' (' + fileInfo[1] + ': line ' + fileInfo[0] + ')';
+      window.parent.postMessage([{
+        log: [{
+          method: 'error',
+          data: [data],
+          id: Date.now().toString()
+        }],
+        source: fileInfo[1]
+      }], '*');
+    }
+  };
+
+
+</script>
+</head>
+
+<body>
+<h1>PoseNet on Image</h1>
+<p id="status">Model Loaded</p>
+<p>image via: <a href="https://www.pexels.com/photo/topless-man-wearing-grey-and-black-shorts-sprinting-on-concrete-road-1401796/" target="_blank">Pexels</a></p>
+<script data-tag="@fs-sketch.js">
+  let img;
+let poseNet;
+let poses = [];
+
+
+  function setup()
+{
+  createCanvas(1300, 1148);
+  // createCanvas(576, 1280);
+
+  // create an image using the p5 dom library
+  // call modelReady() when it is loaded
+  img = createImg("2.png",imageReady)
+  // set the image size to the size of the canvas
+  img.size(width, height);
+
+  img.hide(); // hide the image in the browser
+  frameRate(1); // set the frameRate to 1 since we don't need it to be running quickly in this case
+}
+
+// when the image is ready, then load up poseNet
+function imageReady(){
+  // set some options
+  let options = {
+    imageScaleFactor: 1,
+    minConfidence: 0.1
+  }
+
+  // assign poseNet
+  poseNet = ml5.poseNet(modelReady, options);
+  // This sets up an event that listens to 'pose' events
+  poseNet.on('pose', function (results) {
+    poses = results;
+  });
+}
+
+// when poseNet is ready, do the detection
+function modelReady() {
+  select('#status').html('Model Loaded');
+
+  // When the model is ready, run the singlePose() function...
+  // If/When a pose is detected, poseNet.on('pose', ...) will be listening for the detection results
+  // in the draw() loop, if there are any poses, then carry out the draw commands
+  poseNet.singlePose(img)
+}
+
+// draw() will not show anything until poses are found
+function draw() {
+  if (poses.length > 0) {
+    image(img, 0, 0, width, height);
+    drawSkeleton(poses);
+    drawKeypoints(poses);
+    noLoop(); // stop looping when the poses are estimated
+  }
+
+}
+
+// The following comes from https://ml5js.org/docs/posenet-webcam
+// A function to draw ellipses over the detected keypoints
+function drawKeypoints() {
+  // Loop through all the poses detected
+
+  var coordinates_of_x1 = -1;
+  var coordinates_of_x2 = -1;
+  var coordinates_of_y1 = -1;
+  var coordinates_of_y2 = -1;
+  var coordinates_of_x3 = -1;
+  var coordinates_of_x4 = -1;
+  var coordinates_of_y3 = -1;
+  var coordinates_of_y4 = -1;
+  var coordinates_of_x5 = -1;
+  var coordinates_of_x6 = -1;
+  var coordinates_of_y5 = -1;
+  var coordinates_of_y6 = -1;
+
+  for (let i = 0; i < poses.length; i++) {
+    // For each pose detected, loop through all the keypoints
+    let pose = poses[i].pose;
+    for (let j = 0; j < pose.keypoints.length; j++) {
+      // A keypoint is an object describing a body part (like rightArm or leftShoulder)
+      let keypoint = pose.keypoints[j];
+      // Only draw an ellipse is the pose probability is bigger than 0.2
+      if (keypoint.score > 0.2)
+      {
+        // console.log(keypoint) // shows the keypoints of parts
+
+        if((keypoint.part === 'leftHip') || (keypoint.part === 'rightHip') || (keypoint.part === 'leftKnee') || (keypoint.part === 'rightKnee') || (keypoint.part === 'leftAnkle') || (keypoint.part === 'rightAnkle'))
+        {
+          fill(255,0,0);
+          stroke(255,0,0);
+          strokeWeight(8);
+          ellipse(round(keypoint.position.x), round(keypoint.position.y), 16, 16)
+
+
+          if (keypoint.part === 'leftHip')
+          {
+            coordinates_of_x1= keypoint.position.x
+            coordinates_of_y1 = keypoint.position.y
+          }
+
+         if (keypoint.part === 'rightHip')
+          {
+             coordinates_of_x2 = keypoint.position.x
+             coordinates_of_y2 = keypoint.position.y
+          }
+
+          if (keypoint.part === 'leftKnee')
+          {
+            coordinates_of_x3= keypoint.position.x
+            coordinates_of_y3 = keypoint.position.y
+          }
+
+          if (keypoint.part === 'rightKnee')
+          {
+            coordinates_of_x4 = keypoint.position.x
+            coordinates_of_y4 = keypoint.position.y
+          }
+
+          if (keypoint.part === 'leftAnkle')
+          {
+            coordinates_of_x5= keypoint.position.x
+            coordinates_of_y5 = keypoint.position.y
+          }
+
+          if (keypoint.part === 'rightAnkle')
+          {
+            coordinates_of_x6 = keypoint.position.x
+            coordinates_of_y6 = keypoint.position.y
+          }
+
+        if(coordinates_of_x1 !== -1 && coordinates_of_x2 !==-1 && coordinates_of_x3 !== -1 && coordinates_of_x4 !==-1 && coordinates_of_x5 !== -1 && coordinates_of_x6 !==-1) {
+            var Hip_distance = (sqrt(sq(coordinates_of_x2 - coordinates_of_x1) + (sq(coordinates_of_y2 - coordinates_of_y1))));
+            console.log("Distance between left Hip and Right Hip", Hip_distance)
+
+            var Knee_distance = (sqrt(sq(coordinates_of_x4 - coordinates_of_x3) + (sq(coordinates_of_y4 - coordinates_of_y3))));
+            console.log("Distance between left knee and right knee", Knee_distance)
+
+            var Ankle_distance = (sqrt(sq(coordinates_of_x6 - coordinates_of_x5) + (sq(coordinates_of_y6 - coordinates_of_y5))));
+            console.log("Distance between left ankle and right ankle", Ankle_distance)
+
+            var LeftHip_to_LeftKnee_distance=(sqrt(sq(coordinates_of_x3 - coordinates_of_x1) + (sq(coordinates_of_y3 - coordinates_of_y1))));
+            console.log("Distance between left Hip and Left Knee", LeftHip_to_LeftKnee_distance)
+
+            var LeftKnee_to_LeftAnkle_distance=(sqrt(sq(coordinates_of_x5 - coordinates_of_x3) + (sq(coordinates_of_y5 - coordinates_of_y3))));
+            console.log("Distance between left Knee and Left Ankle", LeftKnee_to_LeftAnkle_distance)
+
+            var RightHip_to_RightKnee_distance=(sqrt(sq(coordinates_of_x4 - coordinates_of_x2) + (sq(coordinates_of_y4 - coordinates_of_y2))));
+            console.log("Distance between Right Hip and Right Knee", RightHip_to_RightKnee_distance)
+
+            var RightKnee_to_RightAnkle_distance=(sqrt(sq(coordinates_of_x6 - coordinates_of_x4) + (sq(coordinates_of_y6 - coordinates_of_y4))));
+            console.log("Distance between Right Knee and Right Ankle", RightKnee_to_RightAnkle_distance)
+
+
+          //You can use below code to save the distances of reference image to local storage
+
+          // Writing the distances into local storage of browser
+          myStorage = window.localStorage;
+          //Uncomment below line if you want to clear the local storage
+          // myStorage.clear();
+          myStorage.setItem('Hip_distance', Hip_distance)
+          myStorage.setItem('Knee_distance', Knee_distance)
+          myStorage.setItem('Ankle_distance', Ankle_distance)
+          myStorage.setItem('LeftHip_to_LeftKnee_distance', LeftHip_to_LeftKnee_distance)
+          myStorage.setItem('LeftKnee_to_LeftAnkle_distance', LeftKnee_to_LeftAnkle_distance)
+          myStorage.setItem('RightHip_to_RightKnee_distance', RightHip_to_RightKnee_distance)
+          myStorage.setItem('RightKnee_to_RightAnkle_distance', RightKnee_to_RightAnkle_distance)
+
+        }
+        }
+        //Uncomment if you want to visualize the image keypoints
+
+        // fill(255);
+        // stroke(20);
+        // strokeWeight(4);
+        // ellipse(round(keypoint.position.x), round(keypoint.position.y), 8, 8);
+      }
+
+    }
+  }
+}
+
+
+// A function to draw the skeletons
+function drawSkeleton() {
+  // Loop through all the skeletons detected
+  for (let i = 0; i < poses.length; i++) {
+    let skeleton = poses[i].skeleton;
+    // For every skeleton, loop through all body connections
+    for (let j = 0; j < skeleton.length; j++) {
+      let partA = skeleton[j][0];
+      let partB = skeleton[j][1];
+      stroke(255);
+      strokeWeight(1);
+      line(partA.position.x, partA.position.y, partB.position.x, partB.position.y);
+    }
+  }
+}
+
+// jQuery.support.cors = true;
+
+</script>
+
+
+
+<canvas id="defaultCanvas0" class="p5Canvas" width="1280" height="720" style="width: 640px; height: 360px;"></canvas><img crossorigin="Anonymous" src="https://cdn.jsdelivr.net/gh/ml5js/ml5-examples@release/p5js/PoseNet/PoseNet_image_single/data/runner.jpg" width="640" height="360" style="width: 640px; height: 360px; display: none;"></body></html>
